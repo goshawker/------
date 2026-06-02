@@ -75,6 +75,7 @@ const app = createApp({
         // 抽屉
         const drawerOpen = ref(false);
         const drawerChapter = ref({});
+        const drawerViewMode = ref('diff'); // 'diff' | 'original' | 'optimized'
 
         // 通知
         const notificationShow = ref(false);
@@ -88,7 +89,42 @@ const app = createApp({
         let wsPingTimer = null;
         let lastPong = Date.now();
 
+        // ---- 工具函数 ----
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         // ---- 计算属性 ----
+
+        const diffResult = computed(() => {
+            const original = drawerChapter.value.content || '';
+            const optimized = drawerChapter.value.optimized_content || '';
+            if (!original || !optimized) return { html: '', addCount: 0, delCount: 0 };
+            const changes = Diff.diffChars(original, optimized);
+            let html = '';
+            let addCount = 0;
+            let delCount = 0;
+            for (const part of changes) {
+                const escaped = escapeHtml(part.value);
+                if (part.added) {
+                    addCount += part.value.length;
+                    html += '<span class="diff-add">' + escaped + '</span>';
+                } else if (part.removed) {
+                    delCount += part.value.length;
+                    html += '<span class="diff-del">' + escaped + '</span>';
+                } else {
+                    html += escaped;
+                }
+            }
+            return { html, addCount, delCount };
+        });
+
+        const diffHtml = computed(() => diffResult.value.html);
+        const diffAddCount = computed(() => diffResult.value.addCount);
+        const diffDelCount = computed(() => diffResult.value.delCount);
 
         const statusText = computed(() => {
             const map = {
@@ -483,6 +519,7 @@ const app = createApp({
         }
 
         async function openDrawer(ch) {
+            drawerViewMode.value = 'diff';
             const outlineReport = state.value.outline_review_report || '';
             drawerChapter.value = {
                 ...ch,
@@ -1079,6 +1116,10 @@ const app = createApp({
             logConsole,
             drawerOpen,
             drawerChapter,
+            drawerViewMode,
+            diffHtml,
+            diffAddCount,
+            diffDelCount,
             notificationShow,
             notificationTitle,
             notificationMessage,

@@ -438,20 +438,38 @@
                 <div class="drawer-content drawer-content-review">{{ drawerChapter.outline_review_report }}</div>
             </div>
 
-            <!-- Original Content -->
-            <div class="drawer-section" v-if="drawerChapter.content">
-                <h4 class="section-title section-title-content">正文内容</h4>
-                <div class="drawer-content drawer-content-content">{{ drawerChapter.content }}</div>
-            </div>
-
             <!-- Review Report -->
             <div class="drawer-section" v-if="drawerChapter.review_report">
                 <h4 class="section-title section-title-review">审核报告</h4>
                 <div class="drawer-content drawer-content-review">{{ drawerChapter.review_report }}</div>
             </div>
 
-            <!-- Optimized Content -->
-            <div class="drawer-section" v-if="drawerChapter.optimized_content">
+            <!-- Content: Tabbed Diff View (when both original + optimized exist) -->
+            <div class="drawer-section" v-if="drawerChapter.content && drawerChapter.optimized_content">
+                <div class="diff-view-tabs">
+                    <button class="diff-tab" :class="{ active: drawerViewMode === 'diff' }" @click="drawerViewMode = 'diff'">
+                        差异对比
+                        <span class="diff-stats" v-if="diffAddCount || diffDelCount">
+                            <span class="diff-stats-add">+{{ diffAddCount }}</span>
+                            <span class="diff-stats-del">-{{ diffDelCount }}</span>
+                        </span>
+                    </button>
+                    <button class="diff-tab" :class="{ active: drawerViewMode === 'original' }" @click="drawerViewMode = 'original'">正文</button>
+                    <button class="diff-tab" :class="{ active: drawerViewMode === 'optimized' }" @click="drawerViewMode = 'optimized'">优化后</button>
+                </div>
+                <div class="drawer-content drawer-content-diff" v-if="drawerViewMode === 'diff'" v-html="diffHtml"></div>
+                <div class="drawer-content drawer-content-content" v-else-if="drawerViewMode === 'original'">{{ drawerChapter.content }}</div>
+                <div class="drawer-content drawer-content-optimized" v-else>{{ drawerChapter.optimized_content }}</div>
+            </div>
+
+            <!-- Original Content Only (not yet optimized) -->
+            <div class="drawer-section" v-if="drawerChapter.content && !drawerChapter.optimized_content">
+                <h4 class="section-title section-title-content">正文内容</h4>
+                <div class="drawer-content drawer-content-content">{{ drawerChapter.content }}</div>
+            </div>
+
+            <!-- Optimized Content Only (no original stored) -->
+            <div class="drawer-section" v-if="!drawerChapter.content && drawerChapter.optimized_content">
                 <h4 class="section-title section-title-optimized">优化后内容</h4>
                 <div class="drawer-content drawer-content-optimized">{{ drawerChapter.optimized_content }}</div>
             </div>
@@ -474,6 +492,7 @@
     </div> <!-- /app -->
 
     <script src="js/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/diff@5.2.0/dist/diff.min.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
