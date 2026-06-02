@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>阅文作品AI生成平台</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        [v-cloak] { display: none; }
+    </style>
+</head>
+<body>
+    <div id="app" v-cloak>
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-logo">
+            <div class="logo-icon">N</div>
+            <span>阅文作品AI生成平台</span>
+        </div>
+        <div class="header-right">
+            <span class="status-indicator" :class="state.status">
+                <span class="status-dot" :class="state.status"></span>
+                <span>{{ statusText }}</span>
+            </span>
+        </div>
+    </header>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" :class="{ collapsed: sidebarCollapsed }">
+            <div class="sidebar-header">
+                <div class="sidebar-tabs">
+                    <button class="sidebar-tab" :class="{ active: sidebarTab === 'config' }"
+                            @click="sidebarTab = 'config'">系统配置</button>
+                    <button class="sidebar-tab" :class="{ active: sidebarTab === 'prompts' }"
+                            @click="sidebarTab = 'prompts'">提示词配置</button>
+                </div>
+                <button class="sidebar-toggle" @click="sidebarCollapsed = !sidebarCollapsed">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+            </div>
+
+            <!-- Tab: 系统配置 -->
+            <div v-show="sidebarTab === 'config'">
+                <div style="padding:10px 20px;border-bottom:1px solid var(--gray-200);">
+                    <button class="btn btn-outline btn-sm" @click="syncAllModels" style="font-size:12px;width:100%;">
+                        🔄 所有模型同步为章节生成(A)配置
+                    </button>
+                </div>
+
+            <!-- Model E (UI: A) Config: 章节生成 -->
+            <div class="config-section config-section-e">
+                <div class="config-section-title">
+                    <span class="model-badge" style="background:#e6f7ff;color:#1890ff;">A</span>
+                    章节生成
+                </div>
+                <div class="form-group">
+                    <label>API 地址</label>
+                    <input v-model="config.model_e.base_url" placeholder="https://api.openai.com/v1">
+                </div>
+                <div class="form-group">
+                    <label>API Key</label>
+                    <input type="password" v-model="config.model_e.api_key" placeholder="sk-...">
+                </div>
+                <div class="form-group">
+                    <label>模型名称</label>
+                    <input v-model="config.model_e.model_name" placeholder="gpt-4o">
+                </div>
+            </div>
+
+            <!-- Model F (UI: B) Config: 章节审核&优化 -->
+            <div class="config-section config-section-f">
+                <div class="config-section-title">
+                    <span class="model-badge" style="background:#fff7e6;color:#fa8c16;">B</span>
+                    章节审核&优化
+                </div>
+                <div class="form-group">
+                    <label>API 地址</label>
+                    <input v-model="config.model_f.base_url" placeholder="https://api.openai.com/v1">
+                </div>
+                <div class="form-group">
+                    <label>API Key</label>
+                    <input type="password" v-model="config.model_f.api_key" placeholder="sk-...">
+                </div>
+                <div class="form-group">
+                    <label>模型名称</label>
+                    <input v-model="config.model_f.model_name" placeholder="gpt-4o">
+                </div>
+            </div>
+
+            <!-- Model C Config -->
+            <div class="config-section config-section-c">
+                <div class="config-section-title">
+                    <span class="model-badge" style="background:#fff8e6;color:#e67e22;">C</span>
+                    正文生成
+                </div>
+                <div class="form-group">
+                    <label>API 地址</label>
+                    <input v-model="config.model_c.base_url" placeholder="https://api.openai.com/v1">
+                </div>
+                <div class="form-group">
+                    <label>API Key</label>
+                    <input type="password" v-model="config.model_c.api_key" placeholder="sk-...">
+                </div>
+                <div class="form-group">
+                    <label>模型名称</label>
+                    <input v-model="config.model_c.model_name" placeholder="gpt-4o">
+                </div>
+            </div>
+
+            <!-- Model D Config -->
+            <div class="config-section config-section-d">
+                <div class="config-section-title">
+                    <span class="model-badge" style="background:#f0edff;color:#a55eea;">D</span>
+                    正文审核&优化
+                </div>
+                <div class="form-group">
+                    <label>API 地址</label>
+                    <input v-model="config.model_d.base_url" placeholder="https://api.openai.com/v1">
+                </div>
+                <div class="form-group">
+                    <label>API Key</label>
+                    <input type="password" v-model="config.model_d.api_key" placeholder="sk-...">
+                </div>
+                <div class="form-group">
+                    <label>模型名称</label>
+                    <input v-model="config.model_d.model_name" placeholder="gpt-4o">
+                </div>
+            </div>
+
+            </div> <!-- /系统配置 tab -->
+
+            <!-- Tab: 提示词配置 -->
+            <div v-show="sidebarTab === 'prompts'" class="config-section" style="border-left-color: #00b894; border-bottom: none;">
+                <div class="form-group">
+                    <label>章节生成提示词 <span style="font-weight:400;color:var(--gray-400);font-size:11px;">（用于 AI 生成章节大纲）</span></label>
+                    <textarea v-model="config.chapter_gen_prompt" placeholder="请填写章节生成提示词，用于指导AI生成章节大纲..." style="min-height:150px;"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>章节审核提示词 <span style="font-weight:400;color:var(--gray-400);font-size:11px;">（用于 AI 审核章节）</span></label>
+                    <textarea v-model="config.chapter_review_prompt" placeholder="请填写章节审核提示词，用于指导AI审核章节正文..." style="min-height:150px;"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>正文生成提示词 <span style="font-weight:400;color:var(--gray-400);font-size:11px;">（用于 AI 生成章节正文）</span></label>
+                    <textarea v-model="config.content_gen_prompt" placeholder="请填写正文生成提示词，用于指导AI生成章节正文内容..." style="min-height:200px;"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>正文审核提示词 <span style="font-weight:400;color:var(--gray-400);font-size:11px;">（用于 AI 审核和优化正文）</span></label>
+                    <textarea v-model="config.review_optimize_prompt" placeholder="请填写正文审核提示词，用于指导AI审核和优化正文..." style="min-height:150px;"></textarea>
+                </div>
+                <div style="padding:16px 0;">
+                    <button class="btn btn-primary" @click="saveConfig" style="width:100%;">💾 保存提示词配置</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Sidebar expand button (when collapsed) -->
+        <button class="sidebar-expand" @click="sidebarCollapsed = false" v-if="sidebarCollapsed">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+
+        <!-- Main Content -->
+        <main class="main-content" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
+            <!-- Input Area -->
+            <div class="input-area">
+                <!-- 小说剧情/大纲输入 -->
+                <div style="margin-bottom:12px;">
+                    <label style="font-size:13px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px;">
+                        小说剧情/大纲 <span style="font-weight:400;color:var(--gray-400);font-size:12px;">（描述整个故事的总体剧情走向、世界观设定、核心矛盾等，每章生成时作为参考提供给AI）</span>
+                    </label>
+                    <textarea v-model="novelPlot" placeholder="请输入整本小说的总体剧情/大纲，包括：&#10;1. 世界观设定（时代背景、修炼体系、势力格局等）&#10;2. 核心矛盾（主线冲突、反派目的等）&#10;3. 主要人物关系&#10;4. 剧情走向（整体起承转合、关键节点等）"
+                              style="min-height:120px;"></textarea>
+                </div>
+                <!-- 手动大纲输入 -->
+                <div style="margin-bottom:12px;">
+                    <label style="font-size:13px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px;">
+                        手动输入大纲 <span style="font-weight:400;color:var(--gray-400);font-size:12px;">（格式：## 第XX章 - 标题 + 章节简介：内容）</span>
+                    </label>
+                    <textarea v-model="manualOutline" placeholder="请按照以下格式输入小说大纲：&#10;&#10;## 第01章 - 穿越之始&#10;章节简介：主角意外穿越到修仙世界，发现自己身处一个陌生的森林。在探索过程中，他遇到了一位受伤的老者，从老者口中得知了这个世界的修炼体系以及即将到来的宗门大比...&#10;&#10;## 第02章 - 初入宗门&#10;章节简介：主角跟随老者来到青云宗，通过测试展现出了惊人的修炼天赋。然而，他的特殊体质引起了某些人的觊觎，一场暗流正在涌动..."
+                              style="min-height:200px;"></textarea>
+                </div>
+
+                <div class="input-row">
+                    <div class="form-group" style="max-width:180px;">
+                        <label>章节总数</label>
+                        <input type="number" v-model.number="totalChapters" min="1" max="500" step="1">
+                    </div>
+                    <div class="form-group" style="max-width:180px;">
+                        <label>每章字数不低于</label>
+                        <input type="number" v-model.number="minWords" min="1000" max="20000" step="500">
+                    </div>
+                    <div style="display:flex;align-items:flex-end;gap:8px;margin-left:auto;padding-bottom:1px;">
+                        <button class="btn btn-success" @click="exportNovel"
+                                :disabled="!chapters.some(ch => ch.has_content)">📥 导出小说</button>
+                        <button class="btn btn-outline" @click="saveConfig">💾 保存配置</button>
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="actions">
+                        <button class="btn btn-info btn-lg" @click="startGenerateChaptersV2"
+                                :disabled="state.status === 'running' || !novelPlot.trim()">
+                            📖 章节生成
+                        </button>
+                        <button class="btn btn-info btn-lg" @click="startReviewChaptersV2"
+                                :disabled="state.status === 'running' || !canStartChapterReview">
+                            📋 章节审核
+                        </button>
+                        <button class="btn btn-success btn-lg" @click="startOptimizeChaptersV2"
+                                :disabled="state.status === 'running' || !canStartChapterOptimize">
+                            🔧 章节优化
+                        </button>
+                        <span class="btn-divider"></span>
+                        <button class="btn btn-primary btn-lg" @click="submitManualOutline"
+                                :disabled="state.status === 'running' || !manualOutline.trim()">
+                            📋 提交大纲
+                        </button>
+                        <span class="btn-divider"></span>
+                        <button class="btn btn-primary btn-lg" @click="startGenerateChapters"
+                                :disabled="state.status === 'running' || !canStartGenerate">
+                            ✏️ 正文生成
+                        </button>
+                        <button class="btn btn-info btn-lg" @click="startReviewChapters"
+                                :disabled="state.status === 'running' || !canStartReview">
+                            🔍 正文审核
+                        </button>
+                        <button class="btn btn-success btn-lg" @click="startOptimizeChapters"
+                                :disabled="state.status === 'running' || !canStartOptimize">
+                            🔄 正文优化
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress -->
+            <div class="card" v-if="state.status === 'running' || state.status === 'paused' || state.status === 'completed'">
+                <div class="card-header">
+                    <h3>生成进度</h3>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="font-size:13px;color:var(--gray-500);">{{ Math.round(state.progress) }}%</span>
+                        <button class="btn btn-outline btn-sm" @click="pausePipeline"
+                                v-if="state.status === 'running'" style="font-size:12px;">⏸ 暂停</button>
+                        <button class="btn btn-success btn-sm" @click="resumePipeline"
+                                v-if="state.status === 'paused'" style="font-size:12px;">▶ 继续</button>
+                        <button class="btn btn-danger btn-sm" @click="cancelPipeline"
+                                v-if="state.status === 'running' || state.status === 'paused'" style="font-size:12px;">⏹ 停止</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar">
+                            <div class="progress-bar-fill" :style="{ width: state.progress + '%' }"></div>
+                        </div>
+                    </div>
+                    <div class="progress-text">
+                        <span>{{ stateMessage }}</span>
+                        <span>{{ Math.round(state.progress) }}%</span>
+                    </div>
+
+                    <!-- Steps -->
+                    <div class="steps-timeline">
+                        <div class="step-item" v-for="(name, idx) in state.step_names" :key="idx">
+                            <div class="step-indicator"
+                                 :class="stepClass(idx)">
+                                <span v-if="stepClass(idx) === 'completed'">✓</span>
+                                <span v-else-if="stepClass(idx) === 'active'">◉</span>
+                                <span v-else>{{ idx + 1 }}</span>
+                            </div>
+                            <div class="step-label" :class="stepClass(idx)">{{ name }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chapter List -->
+            <div class="card" style="margin-top:24px;">
+                <div class="card-header">
+                    <h3>章节列表</h3>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <button class="btn btn-success btn-sm" @click="saveProject"
+                                style="font-size:12px;">💾 保存进度</button>
+                        <button class="btn btn-outline btn-sm" @click="loadProject"
+                                style="font-size:12px;">📂 加载进度</button>
+                        <button class="btn btn-danger btn-sm" @click="resetPipeline"
+                                :disabled="state.status === 'running'" style="font-size:12px;">🗑 初始化</button>
+                        <button class="btn btn-warning btn-sm" @click="regenerateSelectedChapters"
+                                :disabled="!canRegenerate" v-if="selectedCount > 0" style="font-size:12px;">
+                            🔄 重生成选中 ({{ selectedCount }})
+                        </button>
+                        <button class="btn btn-outline btn-sm" @click="deselectAllChapters"
+                                v-if="selectedCount > 0" style="font-size:12px;">取消选择</button>
+                        <span style="font-size:13px;color:var(--gray-500);" v-if="chapters.length > 0">
+                            共 {{ chapters.length }} 章
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body" style="padding:0;">
+                    <!-- Tab: view mode -->
+                    <div style="padding:16px 20px 0;">
+                        <div class="tab-nav">
+                            <button class="tab-item" :class="{ active: chapterTab === 'all' }"
+                                    @click="chapterTab = 'all'">全部章节</button>
+                            <button class="tab-item" :class="{ active: chapterTab === 'outline' }"
+                                    @click="chapterTab = 'outline'">大纲视图</button>
+                        </div>
+                    </div>
+
+                    <!-- Chapter Table -->
+                    <div v-if="chapterTab === 'all'">
+                        <table class="chapter-table" v-if="chapters.length > 0">
+                            <thead>
+                                <tr>
+                                    <th style="width:36px;text-align:center;">
+                                        <input type="checkbox" @change="selectAllChapters"
+                                               :checked="chapters.length > 0 && chapters.every(ch => selectedChapters.has(ch.index))">
+                                    </th>
+                                    <th style="width:90px;">章节</th>
+                                    <th>标题</th>
+                                    <th style="width:80px;">字数</th>
+                                    <th style="width:110px;">大纲</th>
+                                    <th style="width:80px;">正文</th>
+                                    <th style="width:80px;">审核</th>
+                                    <th style="width:80px;">优化</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="ch in chapters" :key="ch.index" @click="openDrawer(ch)">
+                                    <td style="width:36px;text-align:center;" @click.stop>
+                                        <input type="checkbox"
+                                               :checked="selectedChapters.has(ch.index)"
+                                               @change="toggleChapterSelection(ch.index)">
+                                    </td>
+                                    <td class="chapter-index">第{{ String(ch.index).padStart(2, '0') }}章</td>
+                                    <td class="chapter-title">{{ ch.title }}</td>
+                                    <td>
+                                        <span style="font-size:13px;color:var(--gray-500);font-weight:500;">
+                                            {{ ch.content_length > 0 ? formatWordCount(ch.content_length) : '-' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="status-tag" :class="ch.outline_reviewed ? 'reviewed' : (ch.summary ? 'done' : 'pending')">
+                                            {{ ch.outline_optimized ? '已优化' : (ch.outline_reviewed ? '已审核' : (ch.summary ? '已生成' : '待生成')) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="status-tag" :class="ch.has_content ? 'done' : (state.status === 'running' && state.current_step >= 3 ? 'processing' : 'pending')">
+                                            {{ ch.has_content ? '已完成' : (state.status === 'running' && state.current_step >= 3 ? '生成中' : '待生成') }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="status-tag" :class="ch.has_review ? 'reviewed' : (ch.has_content && state.status === 'running' && state.current_step >= 4 ? 'processing' : 'pending')">
+                                            {{ ch.has_review ? '已审核' : (ch.has_content && state.status === 'running' && state.current_step >= 4 ? '审核中' : '待审核') }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="status-tag" :class="ch.has_optimized ? 'done' : (ch.has_review && state.status === 'running' && state.current_step >= 5 ? 'processing' : 'pending')">
+                                            {{ ch.has_optimized ? '已优化' : (ch.has_review && state.status === 'running' && state.current_step >= 5 ? '优化中' : '待优化') }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="chapters-empty" v-else-if="state.status === 'idle'">
+                            <div class="empty-icon">📚</div>
+                            <p>输入大纲并点击"提交大纲"，章节将会在这里显示</p>
+                        </div>
+                        <div class="chapters-empty" v-else>
+                            <div class="empty-icon">⏳</div>
+                            <p>正在生成章节...</p>
+                        </div>
+                    </div>
+
+                    <!-- Outline View -->
+                    <div v-if="chapterTab === 'outline'" style="padding:16px 20px;">
+                        <div v-if="outlineChapters.length > 0">
+                            <div v-for="ch in outlineChapters" :key="ch.index"
+                                 style="padding:12px 0;border-bottom:1px solid var(--gray-100);cursor:pointer;"
+                                 @click="openDrawer(ch)">
+                                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                                    <span style="font-weight:600;color:var(--primary);font-size:13px;">
+                                        第{{ String(ch.index).padStart(2, '0') }}章
+                                    </span>
+                                    <span style="font-weight:500;">{{ ch.title }}</span>
+                                    <span v-if="ch.outline_optimized" style="font-size:11px;background:#e6fff8;color:#00b894;padding:1px 8px;border-radius:10px;font-weight:500;">已优化</span>
+                                    <span v-else-if="ch.outline_reviewed" style="font-size:11px;background:var(--warning-bg);color:#e67e22;padding:1px 8px;border-radius:10px;font-weight:500;">已审核</span>
+                                </div>
+                                <p style="font-size:13px;color:var(--gray-500);line-height:1.7;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">
+                                    {{ ch.summary }}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="chapters-empty" v-else>
+                            <div class="empty-icon">📝</div>
+                            <p>大纲尚未生成</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Log Console -->
+            <div class="log-header">
+                <h3>运行日志</h3>
+                <button class="log-clear" @click="logs = []">清空日志</button>
+            </div>
+            <div class="log-console" ref="logConsole">
+                <div class="log-entry" v-for="(log, i) in logs" :key="i">
+                    <span class="log-time">{{ log.time }}</span>
+                    <span :class="'log-' + log.level">{{ log.text }}</span>
+                </div>
+                <div v-if="logs.length === 0" style="color:var(--gray-500);">暂无日志，开始生成后将显示运行信息</div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Chapter Detail Drawer -->
+    <div class="drawer-overlay" :class="{ open: drawerOpen }" @click="closeDrawer"></div>
+    <div class="drawer" :class="{ open: drawerOpen }">
+        <div class="drawer-header">
+            <h2>{{ drawerChapter.title }}</h2>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <button class="btn btn-warning btn-sm" @click="regenerateSingleChapter(drawerChapter.index)"
+                        :disabled="state.status === 'running'" v-if="drawerChapter.index">
+                    🔄 重生成
+                </button>
+                <button class="drawer-close" @click="closeDrawer">×</button>
+            </div>
+        </div>
+        <div class="drawer-body">
+            <!-- Chapter Summary -->
+            <div class="drawer-section" v-if="drawerChapter.summary">
+                <h4 class="section-title section-title-summary">章节简介</h4>
+                <div class="drawer-content drawer-content-summary">{{ drawerChapter.summary }}</div>
+            </div>
+
+            <!-- Outline Review Report -->
+            <div class="drawer-section" v-if="drawerChapter.outline_review_report && !drawerChapter.review_report">
+                <h4 class="section-title section-title-review">章节审核报告</h4>
+                <div class="drawer-content drawer-content-review">{{ drawerChapter.outline_review_report }}</div>
+            </div>
+
+            <!-- Original Content -->
+            <div class="drawer-section" v-if="drawerChapter.content">
+                <h4 class="section-title section-title-content">正文内容</h4>
+                <div class="drawer-content drawer-content-content">{{ drawerChapter.content }}</div>
+            </div>
+
+            <!-- Review Report -->
+            <div class="drawer-section" v-if="drawerChapter.review_report">
+                <h4 class="section-title section-title-review">审核报告</h4>
+                <div class="drawer-content drawer-content-review">{{ drawerChapter.review_report }}</div>
+            </div>
+
+            <!-- Optimized Content -->
+            <div class="drawer-section" v-if="drawerChapter.optimized_content">
+                <h4 class="section-title section-title-optimized">优化后内容</h4>
+                <div class="drawer-content drawer-content-optimized">{{ drawerChapter.optimized_content }}</div>
+            </div>
+
+            <!-- Empty State -->
+            <div class="drawer-section" v-if="!drawerChapter.summary && !drawerChapter.content">
+                <p style="color:var(--gray-400);text-align:center;padding:40px 0;">
+                    该章节内容尚未生成
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" :class="[notificationClass, { show: notificationShow }]">
+        <div class="notification-title">{{ notificationTitle }}</div>
+        <div class="notification-msg">{{ notificationMessage }}</div>
+    </div>
+
+    </div> <!-- /app -->
+
+    <script src="js/vue.global.prod.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

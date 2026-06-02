@@ -1,0 +1,31 @@
+# 环境变量（包含敏感信息）
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 输出文件
+output/
+novel_api.log
+server.log
+batch_output.log
+
+# 备份
+backup/
+
+# 小说原文（可能包含版权内容）
+input/
+chapters/
+
+# macOS
+.DS_Store
